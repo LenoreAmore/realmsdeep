@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Get room name from URL path or default to "Apocalyptica"
   const roomName = decodeURIComponent(window.location.pathname.split("/").pop()) || "Apocalyptica";
-  localStorage.setItem("roomName", roomName);
+  sessionStorage.setItem("roomName", roomName); // use sessionStorage
 
   // Load admin room info if available
   const rooms = JSON.parse(localStorage.getItem("adminRooms")) || [];
@@ -24,19 +24,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const identity = identityInput.value.trim() || "[Unknown Identity]";
     const entrance = entranceInput.value.trim() || "enters the room";
 
-    // Save data to localStorage for use in chatroom
+    // Save to sessionStorage so each tab has its own identity
     sessionStorage.setItem("identityBlock", identity);
     sessionStorage.setItem("entranceMessage", entrance);
 
-
     if (room?.moods) {
-      localStorage.setItem("roomMoods", JSON.stringify(room.moods));
+      sessionStorage.setItem("roomMoods", JSON.stringify(room.moods));
     }
 
-    // --- Set front door flag so room.js knows to show entrance message ---
+    // --- Set front door flag for room.js to show entrance message ---
     sessionStorage.setItem(`viaFrontdoor_${roomName}`, "true");
 
-    // --- Redirect to chatroom after short delay to ensure storage writes ---
+    // --- Redirect to chatroom ---
     setTimeout(() => {
       window.location.href = `/room/${encodeURIComponent(roomName)}`;
     }, 50);
