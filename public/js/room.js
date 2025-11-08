@@ -12,7 +12,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const STORAGE_KEY = `chatHistory_${roomName}`;
   const HISTORY_COUNT = parseInt(localStorage.getItem("historyCount")) || 10;
 
-  // --- Helper: extract display name ---
   function extractDisplayName(html) {
     if (!html) return "[User]";
     const match = html.match(/\[.*?\]/);
@@ -27,7 +26,6 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("room-name").textContent = roomName.toUpperCase();
   document.getElementById("static-identity-display").textContent = displayName;
 
-  // --- Populate dropdowns ---
   ["All", "Lenore", "Jonah", "Emilia"].forEach(u => {
     const opt = document.createElement("option");
     opt.value = u;
@@ -42,32 +40,17 @@ document.addEventListener("DOMContentLoaded", () => {
     moodDropdown.appendChild(opt);
   });
 
-  // --- Append message ---
   function appendMessage(identityHTML, mood, postTo, message, save = true, scroll = true, isAction = false) {
     if (!message) return;
-
     const msgDiv = document.createElement("div");
     msgDiv.classList.add("chat-message");
-
     if (isAction) {
-      msgDiv.innerHTML = `
-        <div class="chat-identity">${identityHTML}</div>
-        <div class="chat-action"><i>${message}</i></div>
-      `;
+      msgDiv.innerHTML = `<div class="chat-identity">${identityHTML}</div><div class="chat-action"><i>${message}</i></div>`;
     } else {
-      msgDiv.innerHTML = `
-        <div class="chat-identity">${identityHTML}</div>
-        <div class="chat-body"><b>${mood} to ${postTo}:</b> ${message}</div>
-      `;
+      msgDiv.innerHTML = `<div class="chat-identity">${identityHTML}</div><div class="chat-body"><b>${mood} to ${postTo}:</b> ${message}</div>`;
     }
-
     chatLog.appendChild(msgDiv);
-
-    if (scroll) {
-      chatLog.scrollTo({ top: chatLog.scrollHeight, behavior: "smooth" });
-    }
-
-    // Save locally
+    if (scroll) chatLog.scrollTo({ top: chatLog.scrollHeight, behavior: "smooth" });
     if (save) {
       let history = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
       history.push({ identityHTML, mood, postTo, message, isAction });
@@ -76,50 +59,46 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // --- Load history ---
   function loadHistory() {
     const history = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-    const slice = history.slice(-HISTORY_COUNT);
-
-    slice.forEach((m, i) => {
-      const isLast = i === slice.length - 1;
+    history.slice(-HISTORY_COUNT).forEach((m, i) => {
+      const isLast = i === history.length - 1;
       appendMessage(m.identityHTML, m.mood, m.postTo, m.message, false, isLast, !!m.isAction);
     });
   }
 
-  // --- WebSocket setup ---
-  const socket = new WebSocket(`ws://${window.location.host}`);
+  function showEntrance() {
+    appendMessage(fullIdentityHTML, "", "", entranceMessage, true, true, true);
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        type: "entrance",
+        room: roomName,
+        identityHTML: fullIdentityHTML,
+        message: entranceMessage
+      }));
+    }
+  }
+
+  // --- Updated WebSocket connection for HTTPS/WSS ---
+  const socket = new WebSocket(`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}`);
 
   socket.addEventListener("open", () => {
     console.log("Connected to WebSocket server.");
-
-    // Join the room immediately after connecting
+    // Send join event
     socket.send(JSON.stringify({ type: "join", room: roomName }));
-    
-    // Send entrance message to other clients
-    socket.send(JSON.stringify({
-      type: "entrance",
-      room: roomName,
-      identityHTML: fullIdentityHTML,
-      message: entranceMessage
-    }));
   });
 
   socket.addEventListener("message", (event) => {
     const data = JSON.parse(event.data);
-
-    if (data.room !== roomName) return; // ignore other rooms
-
+    if (data.room !== roomName) return;
     if (data.type === "message" || data.type === "entrance") {
       appendMessage(data.identityHTML, data.mood || "", data.postTo || "", data.message, false, true, data.type === "entrance");
     }
   });
 
-  // --- Send message ---
   function sendMessage() {
     const msg = messageBox.value.trim();
     if (!msg) return;
-
     const messageData = {
       type: "message",
       room: roomName,
@@ -128,10 +107,8 @@ document.addEventListener("DOMContentLoaded", () => {
       postTo: postToDropdown.value,
       message: msg
     };
-
     appendMessage(fullIdentityHTML, moodDropdown.value, postToDropdown.value, msg);
     socket.send(JSON.stringify(messageData));
-
     messageBox.value = "";
     messageBox.focus();
   }
@@ -144,6 +121,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // --- Initialize ---
   loadHistory();
+  showEntrance();
 });
