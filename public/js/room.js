@@ -6,17 +6,23 @@ document.addEventListener("DOMContentLoaded", () => {
   let fullIdentityHTML = urlParams.get("identity") || sessionStorage.getItem("identityBlock") || localStorage.getItem("identityBlock") || "[Unknown Identity]";
   const entranceMessage = urlParams.get("entrance") || sessionStorage.getItem("entranceMessage") || localStorage.getItem("entranceMessage") || "enters the room";
 
-  // Ensure identity is always wrapped in brackets
-  if (!fullIdentityHTML.startsWith("[")) {
-    fullIdentityHTML = `[${fullIdentityHTML.replace(/\[|\]/g, "")}]`;
+  // --- Extract display name from first [...] only ---
+  function extractDisplayName(html) {
+    if (!html) return "[Unknown Identity]";
+    const match = html.match(/\[.*?\]/); // matches the first [...] in the string
+    if (match) return match[0];
+    return "[Unknown Identity]";
   }
 
-  // Save to sessionStorage for this tab (refresh-safe)
+  const displayName = extractDisplayName(fullIdentityHTML);
+
+  // Save full HTML to sessionStorage (tab-specific, refresh-safe)
   sessionStorage.setItem("identityBlock", fullIdentityHTML);
   sessionStorage.setItem("entranceMessage", entranceMessage);
 
-  // Display name (strip brackets for static display)
-  const displayName = fullIdentityHTML.replace(/^\[|\]$/g, "");
+  // --- Update static display ---
+  document.getElementById("room-name").textContent = roomName.toUpperCase();
+  document.getElementById("static-identity-display").textContent = displayName;
 
   // --- DOM elements ---
   const chatLog = document.querySelector(".chat-log");
@@ -27,9 +33,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const STORAGE_KEY = `chatHistory_${roomName}`;
   const HISTORY_COUNT = parseInt(localStorage.getItem("historyCount")) || 10;
-
-  document.getElementById("room-name").textContent = roomName.toUpperCase();
-  document.getElementById("static-identity-display").textContent = displayName;
 
   // --- Populate dropdowns ---
   ["All", "Lenore", "Jonah", "Emilia"].forEach(u => {
