@@ -1,9 +1,9 @@
 document.addEventListener("DOMContentLoaded", () => {
   const roomName = decodeURIComponent(window.location.pathname.split("/").pop());
 
-  // --- Use tab-specific identity first, fallback to localStorage ---
-  const fullIdentityHTML = sessionStorage.getItem("identityBlock") || localStorage.getItem("identityBlock") || "[Unknown Identity]";
-  const entranceMessage = sessionStorage.getItem("entranceMessage") || localStorage.getItem("entranceMessage") || "enters the room";
+  // --- Use tab-specific identity only (never read from localStorage inside room) ---
+  const fullIdentityHTML = sessionStorage.getItem("identityBlock") || "[Unknown Identity]";
+  const entranceMessage = sessionStorage.getItem("entranceMessage") || "enters the room";
 
   const chatLog = document.querySelector(".chat-log");
   const postToDropdown = document.getElementById("post-to");
