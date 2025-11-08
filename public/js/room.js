@@ -1,9 +1,14 @@
 document.addEventListener("DOMContentLoaded", () => {
   const roomName = decodeURIComponent(window.location.pathname.split("/").pop());
 
-  // --- Use tab-specific identity only (never fallback to localStorage in-room) ---
-  const fullIdentityHTML = sessionStorage.getItem("identityBlock") || "[Unknown Identity]";
-  const entranceMessage = sessionStorage.getItem("entranceMessage") || "enters the room";
+  // Read identity & entrance from URL first, then sessionStorage, then fallback
+  const urlParams = new URLSearchParams(window.location.search);
+  const fullIdentityHTML = urlParams.get("identity") || sessionStorage.getItem("identityBlock") || "[Unknown Identity]";
+  const entranceMessage = urlParams.get("entrance") || sessionStorage.getItem("entranceMessage") || "enters the room";
+
+  // Save them to sessionStorage so refreshes keep the same name
+  sessionStorage.setItem("identityBlock", fullIdentityHTML);
+  sessionStorage.setItem("entranceMessage", entranceMessage);
 
   const chatLog = document.querySelector(".chat-log");
   const postToDropdown = document.getElementById("post-to");
@@ -88,15 +93,15 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log("Connected to WebSocket server.");
     socket.send(JSON.stringify({ type: "join", room: roomName }));
 
-    // Send entrance message only if user came via frontdoor
-    if (sessionStorage.getItem(`viaFrontdoor_${roomName}`)) {
+    // Show entrance message if user came via frontdoor
+    if (!sessionStorage.getItem(`entered_${roomName}`)) {
       socket.send(JSON.stringify({
         type: "entrance",
         room: roomName,
         identityHTML: fullIdentityHTML,
         message: entranceMessage
       }));
-      sessionStorage.removeItem(`viaFrontdoor_${roomName}`);
+      sessionStorage.setItem(`entered_${roomName}`, "true");
     }
   });
 
@@ -124,14 +129,3 @@ document.addEventListener("DOMContentLoaded", () => {
     messageBox.value = "";
     messageBox.focus();
   }
-
-  sendBtn.addEventListener("click", sendMessage);
-  messageBox.addEventListener("keydown", e => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  });
-
-  loadHistory();
-});
