@@ -124,37 +124,35 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   });
 
-  // --- Send a chat message ---
-  function sendMessage() {
-    const msg = messageBox.value.trim();
-    if (!msg) return;
+ // --- Send a chat message ---
+function sendMessage() {
+  const msg = messageBox.value.trim();
+  if (!msg) return;
 
-    const messageData = {
-      type: "message",
-      room: roomName,
-      identityHTML: fullIdentityHTML,
-      mood: moodDropdown.value,
-      postTo: postToDropdown.value,
-      message: msg
-    };
+  const messageData = {
+    type: "message",
+    room: roomName,
+    identityHTML: fullIdentityHTML,
+    mood: moodDropdown.value,
+    postTo: postToDropdown.value,
+    message: msg
+  };
 
-    // Show it locally
-    appendMessage(fullIdentityHTML, moodDropdown.value, postToDropdown.value, msg);
+  // ✅ Just send it — the server will broadcast it back to everyone (including you)
+  socket.send(JSON.stringify(messageData));
 
-    // Send it to the server
-    socket.send(JSON.stringify(messageData));
+  messageBox.value = "";
+  messageBox.focus();
+}
 
-    messageBox.value = "";
-    messageBox.focus();
+sendBtn.addEventListener("click", sendMessage);
+messageBox.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
   }
+});
 
-  sendBtn.addEventListener("click", sendMessage);
-  messageBox.addEventListener("keydown", e => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  });
 
   // --- Initialize ---
   loadHistory();
