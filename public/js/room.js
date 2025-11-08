@@ -1,9 +1,9 @@
 document.addEventListener("DOMContentLoaded", () => {
   const roomName = decodeURIComponent(window.location.pathname.split("/").pop());
 
-  // --- Use tab-specific identity only ---
-  const fullIdentityHTML = sessionStorage.getItem("identityBlock") || "[Unknown Identity]";
-  const entranceMessage = sessionStorage.getItem("entranceMessage") || "enters the room";
+  // --- Use tab-specific identity first, fallback to localStorage ---
+  const fullIdentityHTML = sessionStorage.getItem("identityBlock") || localStorage.getItem("identityBlock") || "[Unknown Identity]";
+  const entranceMessage = sessionStorage.getItem("entranceMessage") || localStorage.getItem("entranceMessage") || "enters the room";
 
   const chatLog = document.querySelector(".chat-log");
   const postToDropdown = document.getElementById("post-to");
@@ -14,13 +14,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const STORAGE_KEY = `chatHistory_${roomName}`;
   const HISTORY_COUNT = parseInt(localStorage.getItem("historyCount")) || 10;
 
-  // --- Extract display name (first [...] only) ---
+  // --- extract display name for static identity ---
   function extractDisplayName(html) {
     if (!html) return "[User]";
-    const match = html.match(/\[.*?\]/);
+    const match = html.match(/\[.*?\]/); // take only the first [...]
     return match ? match[0] : "[User]";
   }
 
+  // Use the short display name for the static display only
   const displayName = extractDisplayName(fullIdentityHTML);
   document.getElementById("room-name").textContent = roomName.toUpperCase();
   document.getElementById("static-identity-display").textContent = displayName;
@@ -39,13 +40,12 @@ document.addEventListener("DOMContentLoaded", () => {
     moodDropdown.appendChild(opt);
   });
 
-  // --- Append message to chat ---
+  // --- Append message to chat log ---
   function appendMessage(identityHTML, mood, postTo, message, save = true, scroll = true, isAction = false) {
     if (!message) return;
     const msgDiv = document.createElement("div");
     msgDiv.classList.add("chat-message");
 
-    // Use full identity HTML for messages (no extra brackets)
     if (isAction) {
       msgDiv.innerHTML = `<div class="chat-identity">${identityHTML}</div><div class="chat-action"><i>${message}</i></div>`;
     } else {
@@ -53,7 +53,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     chatLog.appendChild(msgDiv);
-    if (scroll) chatLog.scrollTo({ top: chatLog.scrollHeight, behavior: "smooth" });
+
+    if (scroll) {
+      chatLog.scrollTo({ top: chatLog.scrollHeight, behavior: "smooth" });
+    }
 
     if (save) {
       let history = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
@@ -63,6 +66,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // --- Load chat history ---
   function loadHistory() {
     const history = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
     const slice = history.slice(-HISTORY_COUNT);
@@ -74,15 +78,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- WebSocket setup ---
   const socket = new WebSocket(
-    window.location.protocol === "https:"
-      ? `wss://${window.location.host}`
-      : `ws://${window.location.host}`
+    window.location.protocol === "https:" ? `wss://${window.location.host}` : `ws://${window.location.host}`
   );
 
   socket.addEventListener("open", () => {
     console.log("Connected to WebSocket server.");
     socket.send(JSON.stringify({ type: "join", room: roomName }));
 
+    // Send entrance message if coming via frontdoor
     if (sessionStorage.getItem(`viaFrontdoor_${roomName}`)) {
       socket.send(JSON.stringify({
         type: "entrance",
@@ -97,6 +100,7 @@ document.addEventListener("DOMContentLoaded", () => {
   socket.addEventListener("message", (event) => {
     const data = JSON.parse(event.data);
     if (data.room !== roomName) return;
+
     appendMessage(data.identityHTML, data.mood || "", data.postTo || "", data.message, false, true, data.type === "entrance");
   });
 
@@ -127,5 +131,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // --- Initialize ---
   loadHistory();
 });
