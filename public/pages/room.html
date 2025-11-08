@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chatroom</title>
+<link rel="stylesheet" href="/css/style.css">
+<script src="https://kit.fontawesome.com/9f84655ee9.js" crossorigin="anonymous"></script>
+</head>
+<body>
+<div class="chatroom-container">
+  <!-- Top bar -->
+  <div class="chatroom-top">
+    <div class="chatroom-top-left">
+      <h1 id="room-name"></h1>
+    </div>
+    <div class="chat-right-space">
+      <button id="leave-btn">✖</button>
+    </div>
+  </div>
+
+  <!-- Chat log + controls wrapper -->
+  <div class="chat-content-wrapper">
+    <div id="chat-log" class="chat-log"></div>
+
+    <div class="chat-controls">
+      <div class="chat-dropdowns">
+	   <span id="static-identity-display">[User]</span>
+        <select id="mood"></select>
+        <select id="post-to"></select>
+      </div>
+      <div class="chat-input-row">
+        <textarea id="message-box" placeholder="Type a message..."></textarea>
+        <div class="chat-input-btn-wrapper">
+          <button id="send-btn">⏎</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script src="/js/room.js"></script>
+</body>
+</html>

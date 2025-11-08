@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Front Door</title>
+<link rel="stylesheet" href="/css/style.css">
+<script src="https://kit.fontawesome.com/9f84655ee9.js" crossorigin="anonymous"></script>
+<style>
+/* ---------------------- Frontdoor Page ---------------------- */
+.frontdoor-container {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 25px;
+  background: rgba(26, 24, 24, 0.95);
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(139, 0, 0, 0.6);
+  color: #eee;
+  font-family: Verdana, sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  text-align: center;
+}
+
+.frontdoor-container h1 {
+  margin: 0;
+  font-size: 28px;
+  color: #f0f0f0;
+  text-shadow: 0 0 10px #8B0000, 0 0 20px #B22222;
+}
+
+/* Room banner */
+.room-banner-container {
+  width: 100%;
+  max-height: 1000px;
+}
+
+.room-banner-container img {
+  width: 100%;
+  height: auto;
+  max-height: 1000px;
+  border-radius: 8px;
+  object-fit: contain;
+  box-shadow: 0 0 12px rgba(139, 0, 0, 0.5);
+}
+
+/* Room description */
+#room-desc {
+  font-size: 16px;
+  color: #ccc;
+  line-height: 1.5;
+  margin-top: 10px;
+}
+
+/* Horizontal text boxes */
+.text-box-row {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 15px;
+}
+
+/* Inputs: identity and entrance message */
+.frontdoor-input {
+  flex: 1;
+  height: 40px;
+  padding: 8px;
+  border-radius: 6px;
+  border: none;
+  background-color: #3a3a3a;
+  color: #eee;
+  font-family: monospace;
+  font-size: 14px;
+  box-shadow: inset 0 0 6px rgba(139,0,0,0.3);
+  resize: none;
+  text-align: center;
+}
+
+.frontdoor-input::placeholder {
+  color: #bbb;
+  font-style: italic;
+}
+
+.frontdoor-input:focus {
+  outline: none;
+  background-color: #4a4848;
+  box-shadow: inset 0 0 8px #B22222;
+}
+
+/* History selector */
+.history-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+#history-select {
+  background-color: #3a3a3a;
+  color: #eee;
+  border-radius: 6px;
+  border: none;
+  padding: 5px 8px;
+  font-family: Verdana, sans-serif;
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(139,0,0,0.3);
+}
+
+#history-select:hover,
+#history-select:focus {
+  background-color: #4a4848;
+  box-shadow: 0 0 10px #B22222;
+  outline: none;
+}
+
+/* Admin note */
+.admin-note {
+  font-size: 13px;
+  color: #FF6B6B;
+  font-style: italic;
+  margin: 10px 0;
+  background: rgba(36, 32, 32, 0.7);
+  padding: 6px 10px;
+  border-radius: 6px;
+  box-shadow: 0 0 6px rgba(139, 0, 0, 0.3);
+}
+
+/* Enter Room button */
+#enter-room-btn {
+  margin-top: 15px;
+  padding: 12px 30px;
+  border: none;
+  border-radius: 6px;
+  background-color: rgba(26, 24, 24, 0.9);
+  color: #eee;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: inset 0 0 8px rgba(139,0,0,0.3), 0 2px 4px rgba(0,0,0,0.3);
+  transition: all 0.2s ease, transform 0.2s ease;
+}
+
+#enter-room-btn:hover {
+  background-color: rgba(36, 32, 32, 0.95);
+  box-shadow: inset 0 0 8px #B22222, 0 0 10px #B22222;
+  transform: scale(1.05);
+}
+
+#enter-room-btn:active {
+  transform: scale(0.95);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+}
+</style>
+</head>
+<body>
+<div class="frontdoor-container">
+  <h1 id="room-title">Loading Room...</h1>
+
+  <div class="room-banner-container">
+    <img id="room-banner" src="/images/default-banner.jpg" alt="Room Banner">
+  </div>
+
+  <p id="room-desc">This room has no description yet. Room leaders can add information in the admin panel.</p>
+
+  <!-- Horizontal text boxes -->
+  <div class="text-box-row">
+    <textarea id="identity-block" class="frontdoor-input" placeholder="Identity Block"></textarea>
+    <input type="text" id="entrance-msg" class="frontdoor-input" placeholder="Enters the room">
+  </div>
+
+  <!-- History selector -->
+  <div class="history-row">
+    <label for="history-select">Load History:</label>
+    <select id="history-select">
+      <option value="10">10 messages</option>
+      <option value="20">20 messages</option>
+      <option value="30">30 messages</option>
+      <option value="40">40 messages</option>
+      <option value="50">50 messages</option>
+    </select>
+  </div>
+
+  <p class="admin-note">
+    The entrance message and custom content will appear here once the room leader updates them.
+  </p>
+
+  <!-- Enter Room button at bottom -->
+  <button id="enter-room-btn">Enter Room</button>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const roomTitle = document.getElementById("room-title");
+  const roomBanner = document.getElementById("room-banner");
+  const roomDesc = document.getElementById("room-desc");
+  const enterBtn = document.getElementById("enter-room-btn");
+
+  // Dynamically get room name from URL
+  const roomName = decodeURIComponent(window.location.pathname.split("/").pop());
+  roomTitle.textContent = roomName;
+  localStorage.setItem("roomName", roomName);
+
+  // Optional: Admin room info
+  const rooms = JSON.parse(localStorage.getItem("adminRooms")) || [];
+  const room = rooms.find(r => r.name === roomName);
+  if (room) {
+    roomBanner.src = room.banner || "/images/default-banner.jpg";
+    roomDesc.textContent = room.desc || "No description set for this room yet.";
+  }
+
+  // Enter Room button functionality
+  enterBtn.addEventListener("click", () => {
+    const identity = document.getElementById("identity-block").value.trim() || "[Unknown Identity]";
+    const entranceMsg = document.getElementById("entrance-msg").value.trim() || "enters the room";
+    localStorage.setItem("identityBlock", identity);
+    localStorage.setItem("entranceMessage", entranceMsg);
+
+    // Redirect to the chatroom
+    window.location.href = `/room/${encodeURIComponent(roomName)}`;
+  });
+});
+</script>
+</body>
+</html>

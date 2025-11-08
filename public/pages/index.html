@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Apocalyptica Chat</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="chat-container">
+    <header>
+      <h1>Apocalyptica WhoChat</h1>
+      <p class="subtitle">Whispers in the neon dark</p>
+    </header>
+
+    <main id="chat-box"></main>
+
+    <footer>
+      <input id="message-input" type="text" placeholder="Type your message..." autocomplete="off" />
+      <button id="send-button">Send</button>
+    </footer>
+  </div>
+
+  <script>
+    const ws = new WebSocket("ws://localhost:3000");
+    const chatBox = document.getElementById("chat-box");
+    const input = document.getElementById("message-input");
+    const button = document.getElementById("send-button");
+
+    function addMessage(text, sender = "you") {
+      const msg = document.createElement("div");
+      msg.classList.add("message", sender);
+      msg.innerHTML = text;
+      chatBox.appendChild(msg);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    ws.onmessage = (event) => addMessage(event.data, "other");
+
+    button.onclick = () => {
+      const message = input.value.trim();
+      if (message) {
+        ws.send(message);
+        addMessage(message, "you");
+        input.value = "";
+      }
+    };
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") button.click();
+    });
+  </script>
+</body>
+</html>

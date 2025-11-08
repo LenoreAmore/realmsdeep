@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>REALM'S DEEP</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://kit.fontawesome.com/9f84655ee9.js" crossorigin="anonymous"></script>
+  <style>
+    /* --- Whochat-specific styles --- */
+    #rooms-container {
+      gap: 20px;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .room-card {
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 0 10px rgba(139, 0, 0, 0.4);
+      transition: transform 0.2s, box-shadow 0.3s;
+    }
+
+    .room-card:hover {
+      transform: scale(1.03);
+      box-shadow: 0 0 15px #B22222, 0 0 30px #FF4C4C;
+    }
+
+    .room-card h3 {
+      margin-top: 0;
+      color: #f0f0f0;
+      text-shadow: 0 0 10px #8B0000, 0 0 20px #B22222;
+    }
+
+    .room-card .user-list {
+      font-size: 14px;
+      color: #ccc;
+      margin: 10px 0;
+      min-height: 20px;
+    }
+
+    .room-card .user-list span {
+      background: rgba(36, 32, 32, 0.9);
+      padding: 3px 8px;
+      border-radius: 6px;
+      margin-right: 4px;
+      box-shadow: 0 0 4px rgba(139, 0, 0, 0.3);
+    }
+
+    .room-card button {
+      margin-top: 10px;
+      margin-right: 10px;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      background-color: #1a1818;
+      color: #eee;
+      box-shadow: inset 0 0 6px rgba(139, 0, 0, 0.3);
+      transition: box-shadow 0.2s, background 0.2s;
+    }
+
+    .room-card button:hover {
+      background-color: #242020;
+      box-shadow: inset 0 0 8px #B22222, 0 0 10px #B22222;
+    }
+
+    /* Modal fix for standalone mode */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      padding-top: 100px;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.8);
+    }
+
+    .modal-content {
+      margin: auto;
+      padding: 20px;
+      background-color: #1a1818;
+      border-radius: 10px;
+      width: 80%;
+      max-width: 600px;
+      color: #eee;
+      box-shadow: 0 0 15px #8B0000;
+    }
+
+    .close {
+      float: right;
+      font-size: 24px;
+      cursor: pointer;
+    }
+
+    .close:hover {
+      color: #FF4C4C;
+    }
+  </style>
+</head>
+<body>
+  <div id="whochat-top-bar">REALM'S DEEP</div>
+  <div id="rooms-container"></div>
+
+  <!-- Modal -->
+  <div id="room-modal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <img id="modal-banner" src="" alt="Room Banner" style="width:100%; border-radius: 6px;">
+      <h2 id="modal-name"></h2>
+      <p id="modal-desc"></p>
+    </div>
+  </div>
+
+  <footer id="whochat-footer">v0.3 — Realm’s Deep</footer>
+  <script src="/js/whochat.js"></script>
+</body>
+</html>
