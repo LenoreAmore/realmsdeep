@@ -33,7 +33,6 @@ let rooms = {};
 wss.on("connection", (ws) => {
   console.log("New WebSocket connection");
 
-  // Track which room this ws is in
   ws.room = null;
 
   ws.on("message", (msg) => {
@@ -44,19 +43,21 @@ wss.on("connection", (ws) => {
         case "join":
           ws.room = data.room;
           if (!rooms[ws.room]) rooms[ws.room] = [];
-          // Avoid duplicates if ws reconnects
           if (!rooms[ws.room].includes(ws)) rooms[ws.room].push(ws);
           console.log(`Client joined room: ${ws.room}`);
           break;
 
         case "message":
         case "entrance":
-          if (!ws.room) return; // ignore if ws hasn’t joined a room
+          if (!ws.room) return;
           const roomClients = rooms[ws.room];
           if (roomClients) {
             roomClients.forEach(client => {
               if (client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify(data));
+                client.send(JSON.stringify({
+                  ...data,
+                  room: ws.room // ✅ attach the room name to outgoing message
+                }));
               }
             });
           }
