@@ -139,6 +139,9 @@ document.addEventListener("DOMContentLoaded", () => {
     messageBox.value = "";
     messageBox.focus();
   }
+  
+  console.log("✅ Message sent from browser:", messageData);
+
 
   sendBtn.addEventListener("click", sendMessage);
   messageBox.addEventListener("keydown", e => {
