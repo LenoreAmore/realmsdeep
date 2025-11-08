@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   const roomName = decodeURIComponent(window.location.pathname.split("/").pop());
 
-  // --- Use tab-specific identity only (never read from localStorage inside room) ---
+  // --- Use tab-specific identity only (never fallback to localStorage in-room) ---
   const fullIdentityHTML = sessionStorage.getItem("identityBlock") || "[Unknown Identity]";
   const entranceMessage = sessionStorage.getItem("entranceMessage") || "enters the room";
 
@@ -35,6 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
     opt.textContent = u;
     postToDropdown.appendChild(opt);
   });
+
   ["says", "whispers", "shouts", "laughs", "smiles"].forEach(m => {
     const opt = document.createElement("option");
     opt.value = m;
@@ -87,6 +88,7 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log("Connected to WebSocket server.");
     socket.send(JSON.stringify({ type: "join", room: roomName }));
 
+    // Send entrance message only if user came via frontdoor
     if (sessionStorage.getItem(`viaFrontdoor_${roomName}`)) {
       socket.send(JSON.stringify({
         type: "entrance",
