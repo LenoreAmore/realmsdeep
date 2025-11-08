@@ -67,6 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
       chatLog.scrollTo({ top: chatLog.scrollHeight, behavior: "smooth" });
     }
 
+    // Save locally
     if (save) {
       let history = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
       history.push({ identityHTML, mood, postTo, message, isAction });
@@ -86,31 +87,54 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // --- Show entrance message ---
+  function showEntrance() {
+    appendMessage(fullIdentityHTML, "", "", entranceMessage, true, true, true);
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        type: "entrance",
+        room: roomName,
+        identityHTML: fullIdentityHTML,
+        message: entranceMessage
+      }));
+    }
+  }
+
   // --- WebSocket setup ---
   const socket = new WebSocket(`ws://${window.location.host}`);
 
   socket.addEventListener("open", () => {
     console.log("Connected to WebSocket server.");
 
-    // Send join message
-    socket.send(JSON.stringify({ type: "join", room: roomName }));
-
-    // Send entrance message
+    // Join the room immediately
     socket.send(JSON.stringify({
-      type: "entrance",
-      room: roomName,
-      identityHTML: fullIdentityHTML,
-      message: entranceMessage
+      type: "join",
+      room: roomName
     }));
+
+    // Only show entrance if coming from frontdoor
+    if (sessionStorage.getItem(`viaFrontdoor_${roomName}`)) {
+      showEntrance();
+      sessionStorage.removeItem(`viaFrontdoor_${roomName}`);
+    }
   });
 
   socket.addEventListener("message", (event) => {
     const data = JSON.parse(event.data);
 
+    // Ignore messages from other rooms
     if (data.room !== roomName) return;
 
     if (data.type === "message" || data.type === "entrance") {
-      appendMessage(data.identityHTML, data.mood || "", data.postTo || "", data.message, true, true, data.type === "entrance");
+      appendMessage(
+        data.identityHTML,
+        data.mood || "",
+        data.postTo || "",
+        data.message,
+        false,
+        true,
+        data.type === "entrance"
+      );
     }
   });
 
@@ -128,7 +152,7 @@ document.addEventListener("DOMContentLoaded", () => {
       message: msg
     };
 
-    // Only send to server; do not append locally to avoid double message
+    appendMessage(fullIdentityHTML, moodDropdown.value, postToDropdown.value, msg);
     socket.send(JSON.stringify(messageData));
 
     messageBox.value = "";
