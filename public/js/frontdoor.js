@@ -6,11 +6,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const enterBtn = document.getElementById("enter-room-btn");
 
   const roomName = decodeURIComponent(window.location.pathname.split("/").pop()) || "Apocalyptica";
+  sessionStorage.setItem("roomName", roomName); // store current room for this tab
 
-  // Load room info if available
   const rooms = JSON.parse(localStorage.getItem("adminRooms")) || [];
   const room = rooms.find(r => r.name === roomName);
 
+  // Prefill banner, description, identity, entrance message
   roomBanner.src = room?.banner || "/images/default-banner.jpg";
   roomDesc.textContent = room?.desc || "This room has no description yet.";
   identityInput.value = room?.identity || "[Unknown Identity]";
@@ -20,26 +21,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const identity = identityInput.value.trim() || "[Unknown Identity]";
     const entrance = entranceInput.value.trim() || "enters the room";
 
-    // --- Save full HTML identity per tab (sessionStorage) ---
+    // --- Save full HTML per tab ---
     sessionStorage.setItem("identityBlock", identity);
     sessionStorage.setItem("entranceMessage", entrance);
 
-    // --- Optional: save a global fallback ---
-    if (!localStorage.getItem("identityBlock")) {
-      localStorage.setItem("identityBlock", identity);
-      localStorage.setItem("entranceMessage", entrance);
-    }
-
-    if (room?.moods) {
-      sessionStorage.setItem("roomMoods", JSON.stringify(room.moods));
-    }
+    // --- Update localStorage default for future tabs ---
+    localStorage.setItem("identityBlock", identity);
+    localStorage.setItem("entranceMessage", entrance);
 
     // Flag that user came via frontdoor
     sessionStorage.setItem(`viaFrontdoor_${roomName}`, "true");
 
-    // Redirect to chatroom
-    setTimeout(() => {
-      window.location.href = `/room/${encodeURIComponent(roomName)}`;
-    }, 50);
+    // Redirect to room
+    window.location.href = `/room/${encodeURIComponent(roomName)}`;
   });
 });

@@ -1,30 +1,10 @@
 document.addEventListener("DOMContentLoaded", () => {
   const roomName = decodeURIComponent(window.location.pathname.split("/").pop());
 
-  // --- Identity & entrance setup ---
-  const urlParams = new URLSearchParams(window.location.search);
-  let fullIdentityHTML = urlParams.get("identity") || sessionStorage.getItem("identityBlock") || localStorage.getItem("identityBlock") || "[Unknown Identity]";
-  const entranceMessage = urlParams.get("entrance") || sessionStorage.getItem("entranceMessage") || localStorage.getItem("entranceMessage") || "enters the room";
+  // --- Use tab-specific identity only ---
+  const fullIdentityHTML = sessionStorage.getItem("identityBlock") || "[Unknown Identity]";
+  const entranceMessage = sessionStorage.getItem("entranceMessage") || "enters the room";
 
-  // --- Extract display name from first [...] only ---
-  function extractDisplayName(html) {
-    if (!html) return "[Unknown Identity]";
-    const match = html.match(/\[.*?\]/); // matches the first [...] in the string
-    if (match) return match[0];
-    return "[Unknown Identity]";
-  }
-
-  const displayName = extractDisplayName(fullIdentityHTML);
-
-  // Save full HTML to sessionStorage (tab-specific, refresh-safe)
-  sessionStorage.setItem("identityBlock", fullIdentityHTML);
-  sessionStorage.setItem("entranceMessage", entranceMessage);
-
-  // --- Update static display ---
-  document.getElementById("room-name").textContent = roomName.toUpperCase();
-  document.getElementById("static-identity-display").textContent = displayName;
-
-  // --- DOM elements ---
   const chatLog = document.querySelector(".chat-log");
   const postToDropdown = document.getElementById("post-to");
   const moodDropdown = document.getElementById("mood");
@@ -34,14 +14,24 @@ document.addEventListener("DOMContentLoaded", () => {
   const STORAGE_KEY = `chatHistory_${roomName}`;
   const HISTORY_COUNT = parseInt(localStorage.getItem("historyCount")) || 10;
 
-  // --- Populate dropdowns ---
+  // --- Extract display name (first [...] only) ---
+  function extractDisplayName(html) {
+    if (!html) return "[User]";
+    const match = html.match(/\[.*?\]/);
+    return match ? match[0] : "[User]";
+  }
+
+  const displayName = extractDisplayName(fullIdentityHTML);
+  document.getElementById("room-name").textContent = roomName.toUpperCase();
+  document.getElementById("static-identity-display").textContent = displayName;
+
+  // Populate dropdowns
   ["All", "Lenore", "Jonah", "Emilia"].forEach(u => {
     const opt = document.createElement("option");
     opt.value = u;
     opt.textContent = u;
     postToDropdown.appendChild(opt);
   });
-
   ["says", "whispers", "shouts", "laughs", "smiles"].forEach(m => {
     const opt = document.createElement("option");
     opt.value = m;
@@ -49,13 +39,13 @@ document.addEventListener("DOMContentLoaded", () => {
     moodDropdown.appendChild(opt);
   });
 
-  // --- Append message helper ---
+  // --- Append message to chat ---
   function appendMessage(identityHTML, mood, postTo, message, save = true, scroll = true, isAction = false) {
     if (!message) return;
-
     const msgDiv = document.createElement("div");
     msgDiv.classList.add("chat-message");
 
+    // Use full identity HTML for messages (no extra brackets)
     if (isAction) {
       msgDiv.innerHTML = `<div class="chat-identity">${identityHTML}</div><div class="chat-action"><i>${message}</i></div>`;
     } else {
@@ -63,10 +53,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     chatLog.appendChild(msgDiv);
-
-    if (scroll) {
-      chatLog.scrollTo({ top: chatLog.scrollHeight, behavior: "smooth" });
-    }
+    if (scroll) chatLog.scrollTo({ top: chatLog.scrollHeight, behavior: "smooth" });
 
     if (save) {
       let history = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
@@ -76,7 +63,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // --- Load chat history ---
   function loadHistory() {
     const history = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
     const slice = history.slice(-HISTORY_COUNT);
@@ -97,15 +83,14 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log("Connected to WebSocket server.");
     socket.send(JSON.stringify({ type: "join", room: roomName }));
 
-    // Show entrance message once per tab
-    if (!sessionStorage.getItem(`entered_${roomName}`)) {
+    if (sessionStorage.getItem(`viaFrontdoor_${roomName}`)) {
       socket.send(JSON.stringify({
         type: "entrance",
         room: roomName,
         identityHTML: fullIdentityHTML,
         message: entranceMessage
       }));
-      sessionStorage.setItem(`entered_${roomName}`, "true");
+      sessionStorage.removeItem(`viaFrontdoor_${roomName}`);
     }
   });
 
