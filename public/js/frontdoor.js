@@ -25,8 +25,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const entrance = entranceInput.value.trim() || "enters the room";
 
     // Save data to localStorage for use in chatroom
-    localStorage.setItem("identityBlock", identity);
-    localStorage.setItem("entranceMessage", entrance);
+    sessionStorage.setItem("identityBlock", identity);
+    sessionStorage.setItem("entranceMessage", entrance);
+
 
     if (room?.moods) {
       localStorage.setItem("roomMoods", JSON.stringify(room.moods));

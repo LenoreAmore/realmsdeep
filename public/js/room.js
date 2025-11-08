@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
   const roomName = decodeURIComponent(window.location.pathname.split("/").pop());
-  const fullIdentityHTML = localStorage.getItem("identityBlock") || "[Unknown Identity]";
+  const fullIdentityHTML = sessionStorage.getItem("identityBlock") || localStorage.getItem("identityBlock") || "[Unknown Identity]";
   const entranceMessage = localStorage.getItem("entranceMessage") || "enters the room";
 
   const chatLog = document.querySelector(".chat-log");
