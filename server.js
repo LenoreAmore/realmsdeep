@@ -19,6 +19,13 @@ app.get("/room/:room", (req, res) => {
   res.sendFile(path.join(__dirname, "public/pages/room.html"));
 });
 
+// Handle disconnects sent by navigator.sendBeacon
+app.post("/disconnect", express.json(), (req, res) => {
+  const { room, usernameHTML } = req.body;
+  console.log(`Disconnect beacon received: ${usernameHTML} leaving ${room}`);
+  res.sendStatus(200);
+});
+
 // Start HTTP server
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
