@@ -12,10 +12,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const STORAGE_KEY = `chatHistory_${roomName}`;
   const HISTORY_COUNT = parseInt(localStorage.getItem("historyCount")) || 10;
 
-  // ✅ Extract only the [ ... ] portion from the user’s HTML code
+  // Extract only the [ ... ] portion for display
   function extractDisplayName(html) {
     if (!html) return "[User]";
-    const match = html.match(/\[[^\]]+\]/); // grabs only the first [ ... ] block
+    const match = html.match(/\[[^\]]+\]/); // grabs first [ ... ] block
     return match ? match[0] : "[User]";
   }
 
@@ -23,13 +23,13 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("room-name").textContent = roomName.toUpperCase();
   document.getElementById("static-identity-display").textContent = displayName;
 
+  // Populate dropdowns (customize as needed)
   ["All", "Lenore", "Jonah", "Emilia"].forEach(u => {
     const opt = document.createElement("option");
     opt.value = u;
     opt.textContent = u;
     postToDropdown.appendChild(opt);
   });
-
   ["says", "whispers", "shouts", "laughs", "smiles"].forEach(m => {
     const opt = document.createElement("option");
     opt.value = m;
@@ -52,9 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     chatLog.appendChild(msgDiv);
 
-    if (scroll) {
-      chatLog.scrollTo({ top: chatLog.scrollHeight, behavior: "smooth" });
-    }
+    if (scroll) chatLog.scrollTo({ top: chatLog.scrollHeight, behavior: "smooth" });
 
     if (save) {
       let history = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
@@ -69,65 +67,4 @@ document.addEventListener("DOMContentLoaded", () => {
     const slice = history.slice(-HISTORY_COUNT);
     slice.forEach((m, i) => {
       const isLast = i === slice.length - 1;
-      appendMessage(m.identityHTML, m.mood, m.postTo, m.message, false, isLast, !!m.isAction);
-    });
-    chatLog.scrollTo({ top: chatLog.scrollHeight, behavior: "smooth" }); // ✅ autoscroll for 2nd window
-  }
-
-  // --- WebSocket setup ---
-  const socket = new WebSocket(`ws://${window.location.host}`);
-
-  socket.addEventListener("open", () => {
-    console.log("Connected to WebSocket server.");
-    // Join room
-    socket.send(JSON.stringify({ type: "join", room: roomName }));
-    // Send entrance message
-    socket.send(JSON.stringify({
-      type: "entrance",
-      room: roomName,
-      identityHTML: fullIdentityHTML,
-      message: entranceMessage
-    }));
-  });
-
-  socket.addEventListener("message", (event) => {
-    const data = JSON.parse(event.data);
-    if (data.room !== roomName) return;
-
-    if (data.type === "entrance") {
-      appendMessage(data.identityHTML, "", "", data.message, false, true, true);
-    } else if (data.type === "message") {
-      appendMessage(data.identityHTML, data.mood, data.postTo, data.message, false, true, false);
-    }
-  });
-
-  function sendMessage() {
-    const msg = messageBox.value.trim();
-    if (!msg) return;
-
-    const messageData = {
-      type: "message",
-      room: roomName,
-      identityHTML: fullIdentityHTML,
-      mood: moodDropdown.value,
-      postTo: postToDropdown.value,
-      message: msg
-    };
-
-    appendMessage(fullIdentityHTML, moodDropdown.value, postToDropdown.value, msg);
-    socket.send(JSON.stringify(messageData));
-
-    messageBox.value = "";
-    messageBox.focus();
-  }
-
-  sendBtn.addEventListener("click", sendMessage);
-  messageBox.addEventListener("keydown", e => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  });
-
-  loadHistory();
-});
+      appendMessage(m.identityHTML, m.mood, m.postTo, m.message, fa
