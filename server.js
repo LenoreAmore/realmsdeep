@@ -48,20 +48,25 @@ wss.on("connection", (ws) => {
           break;
 
         case "message":
-        case "entrance":
-          if (!ws.room) return;
-          const roomClients = rooms[ws.room];
-          if (roomClients) {
-            for (const client of roomClients) {
-              if (client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify({
-                  ...data,
-                  room: ws.room // attach room name to broadcast
-                }));
-              }
-            }
-          }
-          break;
+case "entrance":
+  if (!ws.room) return;
+
+  const roomClients = rooms[ws.room];
+  if (roomClients && roomClients.size > 0) {
+    const payload = JSON.stringify({
+      ...data,
+      room: ws.room
+    });
+
+    // ✅ Broadcast to *everyone in that room*, including sender
+    for (const client of roomClients) {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(payload);
+      }
+    }
+  }
+  break;
+
 
         default:
           console.warn("Unknown message type:", data.type);
