@@ -8,16 +8,27 @@ const PORT = process.env.PORT || 3000;
 // Serve static files
 app.use(express.static(path.join(__dirname, "public")));
 
-app.get("/whochat", (req, res) => res.sendFile(path.join(__dirname, "public/pages/whochat.html")));
-app.get("/frontdoor/:room", (req, res) => res.sendFile(path.join(__dirname, "public/pages/frontdoor.html")));
-app.get("/room/:room", (req, res) => res.sendFile(path.join(__dirname, "public/pages/room.html")));
+// Serve pages
+app.get("/whochat", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/pages/whochat.html"));
+});
+app.get("/frontdoor/:room", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/pages/frontdoor.html"));
+});
+app.get("/room/:room", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/pages/room.html"));
+});
 
-const server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Start HTTP server
+const server = app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
 
+// WebSocket setup
 const wss = new WebSocket.Server({ server });
 
 // Rooms object: { roomName: Set of clients }
-const rooms = {};
+let rooms = {};
 
 wss.on("connection", (ws) => {
   ws.room = null;
@@ -26,19 +37,29 @@ wss.on("connection", (ws) => {
     try {
       const data = JSON.parse(msg);
 
-      if (data.type === "join") {
-        ws.room = data.room;
-        if (!rooms[ws.room]) rooms[ws.room] = new Set();
-        rooms[ws.room].add(ws);
-      }
+      switch (data.type) {
+        case "join":
+          ws.room = data.room;
+          if (!rooms[ws.room]) rooms[ws.room] = new Set();
+          rooms[ws.room].add(ws);
+          console.log(`Client joined room: ${ws.room}`);
+          break;
 
-      if ((data.type === "message" || data.type === "entrance") && ws.room) {
-        rooms[ws.room].forEach(client => {
-          if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify(data));
-        });
+        case "message":
+        case "entrance":
+          if (!ws.room) return;
+          const roomClients = rooms[ws.room];
+          if (roomClients) {
+            roomClients.forEach(client => {
+              if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({ ...data, room: ws.room }));
+              }
+            });
+          }
+          break;
       }
-    } catch (err) {
-      console.error("WebSocket parse error:", err);
+    } catch (e) {
+      console.error("Error parsing WebSocket message:", e);
     }
   });
 
@@ -47,5 +68,9 @@ wss.on("connection", (ws) => {
       rooms[ws.room].delete(ws);
       if (rooms[ws.room].size === 0) delete rooms[ws.room];
     }
+  });
+
+  ws.on("error", () => {
+    if (ws.room && rooms[ws.room]) rooms[ws.room].delete(ws);
   });
 });
