@@ -5,25 +5,33 @@ const WebSocket = require("ws");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Serve static files
 app.use(express.static(path.join(__dirname, "public")));
 
-app.get("/whochat", (req, res) => res.sendFile(path.join(__dirname, "public/pages/whochat.html")));
-app.get("/frontdoor/:room", (req, res) => res.sendFile(path.join(__dirname, "public/pages/frontdoor.html")));
-app.get("/room/:room", (req, res) => res.sendFile(path.join(__dirname, "public/pages/room.html")));
+// Serve pages
+app.get("/whochat", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/pages/whochat.html"));
+});
+app.get("/frontdoor/:room", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/pages/frontdoor.html"));
+});
+app.get("/room/:room", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/pages/room.html"));
+});
 
-const server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Start HTTP server
+const server = app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
 
-// WebSocket server
+// WebSocket setup
 const wss = new WebSocket.Server({ server });
 
-// Rooms: { roomName: Set of ws connections }
+// Rooms object: { roomName: Set of clients }
 let rooms = {};
 
-// Server-side identity storage: { ws: {identityHTML, room} }
-let identities = new Map();
-
 wss.on("connection", (ws) => {
-  console.log("New WebSocket connection");
+  ws.room = null;
 
   ws.on("message", (msg) => {
     try {
@@ -34,55 +42,35 @@ wss.on("connection", (ws) => {
           ws.room = data.room;
           if (!rooms[ws.room]) rooms[ws.room] = new Set();
           rooms[ws.room].add(ws);
-
-          // Store the identity for this connection
-          identities.set(ws, { identityHTML: data.identityHTML || "[Unknown Identity]", room: ws.room });
-          console.log(`User joined room: ${ws.room}`);
-          break;
-
-        case "entrance":
-          if (!ws.room) return;
-          broadcast(ws.room, {
-            type: "entrance",
-            identityHTML: data.identityHTML,
-            message: data.message
-          });
+          console.log(`Client joined room: ${ws.room}`);
           break;
 
         case "message":
+        case "entrance":
           if (!ws.room) return;
-          broadcast(ws.room, {
-            type: "message",
-            identityHTML: data.identityHTML,
-            mood: data.mood,
-            postTo: data.postTo,
-            message: data.message
-          });
+          const roomClients = rooms[ws.room];
+          if (roomClients) {
+            roomClients.forEach(client => {
+              if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({ ...data, room: ws.room }));
+              }
+            });
+          }
           break;
-
-        default:
-          console.warn("Unknown message type:", data.type);
       }
     } catch (e) {
-      console.error("Error parsing message:", e);
+      console.error("Error parsing WebSocket message:", e);
     }
   });
 
   ws.on("close", () => {
     if (ws.room && rooms[ws.room]) {
       rooms[ws.room].delete(ws);
-      identities.delete(ws);
-      console.log(`User disconnected from room: ${ws.room}`);
-
       if (rooms[ws.room].size === 0) delete rooms[ws.room];
     }
   });
-});
 
-// Helper: broadcast message to all clients in a room
-function broadcast(room, data) {
-  const clients = rooms[room] || [];
-  for (const client of clients) {
-    if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify(data));
-  }
-}
+  ws.on("error", () => {
+    if (ws.room && rooms[ws.room]) rooms[ws.room].delete(ws);
+  });
+});
