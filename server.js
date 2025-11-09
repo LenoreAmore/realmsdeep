@@ -24,10 +24,10 @@ const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
-// WebSocket setup
+// --- WebSocket setup ---
 const wss = new WebSocket.Server({ server });
 
-// Rooms object: { roomName: [ws, ws, ...] }
+// Rooms object: { roomName: Set of clients }
 let rooms = {};
 
 wss.on("connection", (ws) => {
@@ -42,8 +42,8 @@ wss.on("connection", (ws) => {
       switch (data.type) {
         case "join":
           ws.room = data.room;
-          if (!rooms[ws.room]) rooms[ws.room] = [];
-          if (!rooms[ws.room].includes(ws)) rooms[ws.room].push(ws);
+          if (!rooms[ws.room]) rooms[ws.room] = new Set();
+          rooms[ws.room].add(ws);
           console.log(`Client joined room: ${ws.room}`);
           break;
 
@@ -52,14 +52,14 @@ wss.on("connection", (ws) => {
           if (!ws.room) return;
           const roomClients = rooms[ws.room];
           if (roomClients) {
-            roomClients.forEach(client => {
+            for (const client of roomClients) {
               if (client.readyState === WebSocket.OPEN) {
                 client.send(JSON.stringify({
                   ...data,
-                  room: ws.room // ✅ attach the room name to outgoing message
+                  room: ws.room // attach room name to broadcast
                 }));
               }
-            });
+            }
           }
           break;
 
@@ -73,8 +73,22 @@ wss.on("connection", (ws) => {
 
   ws.on("close", () => {
     if (ws.room && rooms[ws.room]) {
-      rooms[ws.room] = rooms[ws.room].filter(c => c !== ws);
+      rooms[ws.room].delete(ws);
       console.log(`Client disconnected from room: ${ws.room}`);
+
+      // Clean up empty rooms
+      if (rooms[ws.room].size === 0) {
+        delete rooms[ws.room];
+        console.log(`Room ${ws.room} is now empty and was removed.`);
+      }
+    }
+  });
+
+  // Handle abnormal socket termination (browser closed abruptly)
+  ws.on("error", (err) => {
+    console.error("WebSocket error:", err);
+    if (ws.room && rooms[ws.room]) {
+      rooms[ws.room].delete(ws);
     }
   });
 });

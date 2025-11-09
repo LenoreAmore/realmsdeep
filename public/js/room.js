@@ -1,9 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   const roomName = decodeURIComponent(window.location.pathname.split("/").pop());
-
-  // --- Use tab-specific identity first, fallback to localStorage ---
-  const fullIdentityHTML = sessionStorage.getItem("identityBlock") || localStorage.getItem("identityBlock") || "[Unknown Identity]";
-  const entranceMessage = sessionStorage.getItem("entranceMessage") || localStorage.getItem("entranceMessage") || "enters the room";
+  const fullIdentityHTML = localStorage.getItem("identityBlock") || "[Unknown Identity]";
+  const entranceMessage = localStorage.getItem("entranceMessage") || "enters the room";
 
   const chatLog = document.querySelector(".chat-log");
   const postToDropdown = document.getElementById("post-to");
@@ -14,25 +12,27 @@ document.addEventListener("DOMContentLoaded", () => {
   const STORAGE_KEY = `chatHistory_${roomName}`;
   const HISTORY_COUNT = parseInt(localStorage.getItem("historyCount")) || 10;
 
-  // --- extract display name for static identity ---
   function extractDisplayName(html) {
     if (!html) return "[User]";
-    const match = html.match(/\[.*?\]/); // take only the first [...]
-    return match ? match[0] : "[User]";
+    const match = html.match(/\[.*?\]/);
+    if (match) return match[0];
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    const lines = tmp.innerText.split("\n").map(l => l.trim()).filter(Boolean);
+    return lines.length ? lines[0] : "[User]";
   }
 
-  // Use the short display name for the static display only
   const displayName = extractDisplayName(fullIdentityHTML);
   document.getElementById("room-name").textContent = roomName.toUpperCase();
   document.getElementById("static-identity-display").textContent = displayName;
 
-  // Populate dropdowns
   ["All", "Lenore", "Jonah", "Emilia"].forEach(u => {
     const opt = document.createElement("option");
     opt.value = u;
     opt.textContent = u;
     postToDropdown.appendChild(opt);
   });
+
   ["says", "whispers", "shouts", "laughs", "smiles"].forEach(m => {
     const opt = document.createElement("option");
     opt.value = m;
@@ -40,7 +40,6 @@ document.addEventListener("DOMContentLoaded", () => {
     moodDropdown.appendChild(opt);
   });
 
-  // --- Append message to chat log ---
   function appendMessage(identityHTML, mood, postTo, message, save = true, scroll = true, isAction = false) {
     if (!message) return;
     const msgDiv = document.createElement("div");
@@ -66,7 +65,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // --- Load chat history ---
   function loadHistory() {
     const history = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
     const slice = history.slice(-HISTORY_COUNT);
@@ -77,34 +75,22 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // --- WebSocket setup ---
-  const socket = new WebSocket(
-    window.location.protocol === "https:" ? `wss://${window.location.host}` : `ws://${window.location.host}`
-  );
+  const socket = new WebSocket(`ws://${window.location.host}`);
 
   socket.addEventListener("open", () => {
     console.log("Connected to WebSocket server.");
+    // Send join notification
     socket.send(JSON.stringify({ type: "join", room: roomName }));
-
-    // Send entrance message if coming via frontdoor
-    if (sessionStorage.getItem(`viaFrontdoor_${roomName}`)) {
-      socket.send(JSON.stringify({
-        type: "entrance",
-        room: roomName,
-        identityHTML: fullIdentityHTML,
-        message: entranceMessage
-      }));
-      sessionStorage.removeItem(`viaFrontdoor_${roomName}`);
-    }
+    // Send entrance message to all
+    socket.send(JSON.stringify({ type: "entrance", room: roomName, identityHTML: fullIdentityHTML, message: entranceMessage }));
   });
 
   socket.addEventListener("message", (event) => {
     const data = JSON.parse(event.data);
     if (data.room !== roomName) return;
-
     appendMessage(data.identityHTML, data.mood || "", data.postTo || "", data.message, false, true, data.type === "entrance");
   });
 
-  // --- Send chat message ---
   function sendMessage() {
     const msg = messageBox.value.trim();
     if (!msg) return;
@@ -118,7 +104,9 @@ document.addEventListener("DOMContentLoaded", () => {
       message: msg
     };
 
+    appendMessage(fullIdentityHTML, moodDropdown.value, postToDropdown.value, msg);
     socket.send(JSON.stringify(messageData));
+
     messageBox.value = "";
     messageBox.focus();
   }
@@ -131,6 +119,5 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // --- Initialize ---
   loadHistory();
 });
