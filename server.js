@@ -5,7 +5,7 @@ const WebSocket = require("ws");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Serve static files
+// Serve static files from public/
 app.use(express.static(path.join(__dirname, "public")));
 
 // Serve pages
@@ -19,44 +19,35 @@ app.get("/room/:room", (req, res) => {
   res.sendFile(path.join(__dirname, "public/pages/room.html"));
 });
 
-// Start HTTP server
+// Start server
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
 // WebSocket setup
 const wss = new WebSocket.Server({ server });
+let rooms = {}; // { roomName: [ws, ws, ...] }
 
-// Rooms object: { roomName: Set of clients }
-let rooms = {};
-
-wss.on("connection", (ws) => {
-  ws.room = null;
+wss.on("connection", (ws, req) => {
+  console.log("New WebSocket connection");
 
   ws.on("message", (msg) => {
     try {
       const data = JSON.parse(msg);
 
-      switch (data.type) {
-        case "join":
-          ws.room = data.room;
-          if (!rooms[ws.room]) rooms[ws.room] = new Set();
-          rooms[ws.room].add(ws);
-          console.log(`Client joined room: ${ws.room}`);
-          break;
+      if (data.type === "join") {
+        ws.room = data.room;
+        if (!rooms[ws.room]) rooms[ws.room] = [];
+        rooms[ws.room].push(ws);
+      }
 
-        case "message":
-        case "entrance":
-          if (!ws.room) return;
-          const roomClients = rooms[ws.room];
-          if (roomClients) {
-            roomClients.forEach(client => {
-              if (client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify({ ...data, room: ws.room }));
-              }
-            });
+      if (data.type === "message" || data.type === "entrance") {
+        const roomClients = rooms[ws.room] || [];
+        roomClients.forEach(client => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(data));
           }
-          break;
+        });
       }
     } catch (e) {
       console.error("Error parsing WebSocket message:", e);
@@ -65,12 +56,8 @@ wss.on("connection", (ws) => {
 
   ws.on("close", () => {
     if (ws.room && rooms[ws.room]) {
-      rooms[ws.room].delete(ws);
-      if (rooms[ws.room].size === 0) delete rooms[ws.room];
+      rooms[ws.room] = rooms[ws.room].filter(c => c !== ws);
     }
   });
-
-  ws.on("error", () => {
-    if (ws.room && rooms[ws.room]) rooms[ws.room].delete(ws);
-  });
 });
+ 

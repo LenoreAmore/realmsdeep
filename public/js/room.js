@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   const roomName = decodeURIComponent(window.location.pathname.split("/").pop());
-  const fullIdentityHTML = sessionStorage.getItem("identityBlock") || localStorage.getItem("identityBlock") || "[Unknown Identity]";
-  const entranceMessage = sessionStorage.getItem("entranceMessage") || localStorage.getItem("entranceMessage") || "enters the room";
+  const fullIdentityHTML = localStorage.getItem("identityBlock") || "[Unknown Identity]";
+  const entranceMessage = localStorage.getItem("entranceMessage") || "enters the room";
 
   const chatLog = document.querySelector(".chat-log");
   const postToDropdown = document.getElementById("post-to");
@@ -12,24 +12,29 @@ document.addEventListener("DOMContentLoaded", () => {
   const STORAGE_KEY = `chatHistory_${roomName}`;
   const HISTORY_COUNT = parseInt(localStorage.getItem("historyCount")) || 10;
 
-  // Extract just the [ ... ] for display
+  // --- Helper: extract display name ---
   function extractDisplayName(html) {
     if (!html) return "[User]";
-    const match = html.match(/\[[^\]]+\]/);
-    return match ? match[0] : "[User]";
+    const match = html.match(/\[.*?\]/);
+    if (match) return match[0];
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    const lines = tmp.innerText.split("\n").map(l => l.trim()).filter(Boolean);
+    return lines.length ? lines[0] : "[User]";
   }
 
   const displayName = extractDisplayName(fullIdentityHTML);
   document.getElementById("room-name").textContent = roomName.toUpperCase();
   document.getElementById("static-identity-display").textContent = displayName;
 
-  // Populate dropdowns (example)
+  // --- Populate dropdowns ---
   ["All", "Lenore", "Jonah", "Emilia"].forEach(u => {
     const opt = document.createElement("option");
     opt.value = u;
     opt.textContent = u;
     postToDropdown.appendChild(opt);
   });
+
   ["says", "whispers", "shouts", "laughs", "smiles"].forEach(m => {
     const opt = document.createElement("option");
     opt.value = m;
@@ -37,24 +42,30 @@ document.addEventListener("DOMContentLoaded", () => {
     moodDropdown.appendChild(opt);
   });
 
+  // --- Append message ---
   function appendMessage(identityHTML, mood, postTo, message, save = true, scroll = true, isAction = false) {
     if (!message) return;
+
     const msgDiv = document.createElement("div");
     msgDiv.classList.add("chat-message");
 
-    const identityDisplay = extractDisplayName(identityHTML);
-
     if (isAction) {
-      msgDiv.innerHTML = `<div class="chat-identity">${identityDisplay}</div>
-                          <div class="chat-action"><i>${message}</i></div>`;
+      msgDiv.innerHTML = `
+        <div class="chat-identity">${identityHTML}</div>
+        <div class="chat-action"><i>${message}</i></div>
+      `;
     } else {
-      msgDiv.innerHTML = `<div class="chat-identity">${identityDisplay}</div>
-                          <div class="chat-body"><b>${mood} to ${postTo}:</b> ${message}</div>`;
+      msgDiv.innerHTML = `
+        <div class="chat-identity">${identityHTML}</div>
+        <div class="chat-body"><b>${mood} to ${postTo}:</b> ${message}</div>
+      `;
     }
 
     chatLog.appendChild(msgDiv);
 
-    if (scroll) chatLog.scrollTo({ top: chatLog.scrollHeight, behavior: "smooth" });
+    if (scroll) {
+      chatLog.scrollTo({ top: chatLog.scrollHeight, behavior: "smooth" });
+    }
 
     if (save) {
       let history = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
@@ -64,41 +75,46 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // --- Load history ---
   function loadHistory() {
     const history = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-    history.slice(-HISTORY_COUNT).forEach((m, i) => {
-      const isLast = i === history.length - 1;
+    const slice = history.slice(-HISTORY_COUNT);
+
+    slice.forEach((m, i) => {
+      const isLast = i === slice.length - 1;
       appendMessage(m.identityHTML, m.mood, m.postTo, m.message, false, isLast, !!m.isAction);
     });
   }
 
+  // --- WebSocket setup ---
   const socket = new WebSocket(`ws://${window.location.host}`);
 
   socket.addEventListener("open", () => {
+    console.log("Connected to WebSocket server.");
+
+    // Send join message
     socket.send(JSON.stringify({ type: "join", room: roomName }));
 
-    if (sessionStorage.getItem(`viaFrontdoor_${roomName}`)) {
-      socket.send(JSON.stringify({
-        type: "entrance",
-        room: roomName,
-        identityHTML: fullIdentityHTML,
-        message: entranceMessage
-      }));
-      sessionStorage.removeItem(`viaFrontdoor_${roomName}`);
-    }
+    // Send entrance message
+    socket.send(JSON.stringify({
+      type: "entrance",
+      room: roomName,
+      identityHTML: fullIdentityHTML,
+      message: entranceMessage
+    }));
   });
 
   socket.addEventListener("message", (event) => {
     const data = JSON.parse(event.data);
+
     if (data.room !== roomName) return;
 
-    if (data.type === "entrance") {
-      appendMessage(data.identityHTML, "", "", data.message, false, true, true);
-    } else if (data.type === "message") {
-      appendMessage(data.identityHTML, data.mood, data.postTo, data.message, false, true, false);
+    if (data.type === "message" || data.type === "entrance") {
+      appendMessage(data.identityHTML, data.mood || "", data.postTo || "", data.message, true, true, data.type === "entrance");
     }
   });
 
+  // --- Send message ---
   function sendMessage() {
     const msg = messageBox.value.trim();
     if (!msg) return;
@@ -112,11 +128,21 @@ document.addEventListener("DOMContentLoaded", () => {
       message: msg
     };
 
-    appendMessage(fullIdentityHTML, moodDropdown.value, postToDropdown.value, msg);
+    // Only send to server; do not append locally to avoid double message
     socket.send(JSON.stringify(messageData));
 
     messageBox.value = "";
     messageBox.focus();
   }
 
-  sendBtn.addEventL
+  sendBtn.addEventListener("click", sendMessage);
+  messageBox.addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  // --- Initialize ---
+  loadHistory();
+});
